@@ -1,281 +1,183 @@
-Filters = {};
-Filters.getPixels = function(img) {
-  /*var c = this.getCanvas(img.width, img.height);
-  var ctx = c.getContext('2d');
-  ctx.drawImage(img, 0, 0);
-  return ctx.getImageData(0,0,c.width,c.height);*/
-  return img;
-};
+/*
 
-Filters.getCanvas = function(w,h) {
-  var c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  c.style.width = w+"px";
-  c.style.height = h+"px";
-  return c;
-};
+	Example for drawing generative Markers
+	In this example we draw a random hexagon
 
-Filters.filterImage = function(filter, image, var_args) {
-  var args = [this.getPixels(image)];
-  for (var i=2; i<arguments.length; i++) {
-    args.push(arguments[i]);
-  }
-  return filter.apply(null, args);
-};
+*/
 
-Filters.tmpCanvas = document.createElement('canvas');
-Filters.tmpCtx = Filters.tmpCanvas.getContext('2d');
+var w = 150;		//Width of marker image
+var h = 110;		//Height of marker image
+var radius = 35;	//Radius for the draw hexagon
 
-Filters.createImageData = function(w,h) {
-  return this.tmpCtx.createImageData(w,h);
-};
+//This function is called by the function that loads the data
+//The variable data is one item from the loaded json file
+function drawMarker(data){
 
-Filters.grayscale = function(pixels, args) {
-  var d = pixels.data;
-  for (var i=0; i<d.length; i+=4) {
-    var r = d[i];
-    var g = d[i+1];
-    var b = d[i+2];
-    // CIE luminance for the RGB
-    // The human eye is bad at seeing red and blue, so we de-emphasize them.
-    var v = 0.2126*r + 0.7152*g + 0.0722*b;
-    d[i] = d[i+1] = d[i+2] = v
-  }
-  return pixels;
-};
-
-Filters.convolute = function(pixels, weights, opaque) {
-  var side = Math.round(Math.sqrt(weights.length));
-  var halfSide = Math.floor(side/2);
-  var src = pixels.data;
-  var sw = pixels.width;
-  var sh = pixels.height;
-  // pad output by the convolution matrix
-  var w = sw;
-  var h = sh;
-  var output = Filters.createImageData(w, h);
-  var dst = output.data;
-  // go through the destination image pixels
-  var alphaFac = opaque ? 1 : 0;
-  for (var y=0; y<h; y++) {
-    for (var x=0; x<w; x++) {
-      var sy = y;
-      var sx = x;
-      var dstOff = (y*w+x)*4;
-      // calculate the weighed sum of the source image pixels that
-      // fall under the convolution matrix
-      var r=0, g=0, b=0, a=0;
-      for (var cy=0; cy<side; cy++) {
-        for (var cx=0; cx<side; cx++) {
-          var scy = sy + cy - halfSide;
-          var scx = sx + cx - halfSide;
-          if (scy >= 0 && scy < sh && scx >= 0 && scx < sw) {
-            var srcOff = (scy*sw+scx)*4;
-            var wt = weights[cy*side+cx];
-            r += src[srcOff] * wt;
-            g += src[srcOff+1] * wt;
-            b += src[srcOff+2] * wt;
-            a += src[srcOff+3] * wt;
-          }
-        }
-      }
-      dst[dstOff] = r;
-      dst[dstOff+1] = g;
-      dst[dstOff+2] = b;
-      dst[dstOff+3] = a + alphaFac*(255-a);
-    }
-  }
-  return output;
-};
-
-var w = 150;
-var h = 110;
-
-var radius = 35;
-var angle_range = 35;
-var max_level = 7;
-var multiply = 3;
-var line_multiply = 4;
-var leafSize = 2;
-var fullAmount = 0;
-var tAmount = 0;
-var leaf_amount = 0;
-var off = 0;
-
-function createTree(amount){
-	leaf_amount = 0;
-	off = 0;
-	fullAmount = amount;
-	tAmount = 0;
-	var end = 0;
-	var tmulti = 0;
-	while(end < amount){
-		tmulti++;
-		end = Math.pow(tmulti, max_level-1);
+	//Canvas and Context
+	//1 is used for drawing the actual marker
+	//2 is used for drawing the shadow
+	//3 is used for combinding marker and shadow
+	var canvas = [];
+	var ctx = [];
+	for(var i = 0; i<3; i++){
+		canvas[i] = document.createElement('canvas');
+		ctx[i] = canvas[i].getContext('2d');
+		canvas[i].style.width = w+'px';
+		canvas[i].style.height = h+'px';
+		canvas[i].width = w;
+		canvas[i].height = h;	
 	}
-	multiply = tmulti;
 
-	var canvas1 = document.createElement('canvas');
-	var ctx1 = canvas1.getContext('2d');
-	canvas1.style.width = w+'px';
-	canvas1.style.height = h+'px';
-	canvas1.width = w;
-	canvas1.height = h;
+	/*
 
-	var canvas2 = document.createElement('canvas');
-	var ctx2 = canvas2.getContext('2d');
-	canvas2.style.width = w+'px';
-	canvas2.style.height = h+'px';
-	canvas2.width = w;
-	canvas2.height = h;
+		START — DRAWING THE MARKER
 
-	var canvas3 = document.createElement('canvas');
-	var ctx3 = canvas3.getContext('2d');
-	canvas3.style.width = w+'px';
-	canvas3.style.height = h+'px';
-	canvas3.width = w;
-	canvas3.height = h;
+	*/
 
-	ctx1.strokeStyle = "rgba(0, 0, 0, 0.5)";
-	ctx1.lineJoin = "round";
-	ctx1.lineCap = "round";
-	ctx1.lineWidth = 0.5;
+	ctx[0].strokeStyle = "rgba(0, 0, 0, 0.5)";
+	ctx[0].lineJoin = "round";
+	ctx[0].lineCap = "round";
+	ctx[0].lineWidth = 0.5;
 
-	ctx1.save();
-	
-	ctx1.translate(50,50);
+	ctx[0].save();	
+	ctx[0].translate(50,50);
 
-	ctx1.beginPath();
-	ctx1.moveTo(polar_x(20, 0), polar_y(20, 0));
-	ctx1.fillStyle = "rgba(255,255,255,1)";
-	ctx1.lineTo(polar_x(20, 60),  polar_y(20, 60));
-	ctx1.lineTo(polar_x(20, 120), polar_y(20, 120));
-	ctx1.lineTo(polar_x(30, 180), polar_y(30, 180));
-	ctx1.lineTo(polar_x(20, 240), polar_y(20, 240));
-	ctx1.lineTo(polar_x(20, 300), polar_y(20, 300));
-	ctx1.lineTo(polar_x(20, 360), polar_y(20, 360));
-	ctx1.closePath();
-	ctx1.fill();
-	ctx1.stroke();
+	ctx[0].beginPath();
+	ctx[0].moveTo(polar_x(20, 0), polar_y(20, 0));
+	ctx[0].fillStyle = "rgba(255,255,255,1)";
+	ctx[0].lineTo(polar_x(20, 60),  polar_y(20, 60));
+	ctx[0].lineTo(polar_x(20, 120), polar_y(20, 120));
+	ctx[0].lineTo(polar_x(30, 180), polar_y(30, 180));
+	ctx[0].lineTo(polar_x(20, 240), polar_y(20, 240));
+	ctx[0].lineTo(polar_x(20, 300), polar_y(20, 300));
+	ctx[0].lineTo(polar_x(20, 360), polar_y(20, 360));
+	ctx[0].closePath();
+	ctx[0].fill();
+	ctx[0].stroke();
 
-	ctx1.beginPath();
-	ctx1.moveTo(polar_x(20, 0), polar_y(20, 0));
-	ctx1.fillStyle = "rgba(255,0,0,0.2)";
-	ctx1.lineTo(polar_x(20, 60),  polar_y(20, 60));
-	ctx1.lineTo(polar_x(20, 120), polar_y(20, 120));
-	ctx1.lineTo(polar_x(30, 180), polar_y(30, 180));
-	ctx1.lineTo(polar_x(20, 240), polar_y(20, 240));
-	ctx1.lineTo(polar_x(20, 300), polar_y(20, 300));
-	ctx1.lineTo(polar_x(20, 360), polar_y(20, 360));
-	ctx1.closePath();
-	ctx1.fill();
+	ctx[0].beginPath();
+	ctx[0].moveTo(polar_x(20, 0), polar_y(20, 0));
+	ctx[0].fillStyle = "rgba(255,0,0,0.2)";
+	ctx[0].lineTo(polar_x(20, 60),  polar_y(20, 60));
+	ctx[0].lineTo(polar_x(20, 120), polar_y(20, 120));
+	ctx[0].lineTo(polar_x(30, 180), polar_y(30, 180));
+	ctx[0].lineTo(polar_x(20, 240), polar_y(20, 240));
+	ctx[0].lineTo(polar_x(20, 300), polar_y(20, 300));
+	ctx[0].lineTo(polar_x(20, 360), polar_y(20, 360));
+	ctx[0].closePath();
+	ctx[0].fill();
 
 	for(var i = 0; i<10; i++){
-		ctx1.fillStyle = "rgba("+Math.round(Math.random()*255)+","+Math.round(Math.random()*255)+","+Math.round(Math.random()*255)+","+Math.random()/2+")";
+		ctx[0].fillStyle = "rgba("+Math.round(Math.random()*255)+","+Math.round(Math.random()*255)+","+Math.round(Math.random()*255)+","+Math.random()/2+")";
 		var cr = 20;
-		ctx1.beginPath();
+		ctx[0].beginPath();
 		var a = Math.round(Math.random()*6)*60;
 		if(a==180){cr=30;}else{cr=20;}
-		ctx1.moveTo(polar_x(cr, a), polar_y(cr, a));
+		ctx[0].moveTo(polar_x(cr, a), polar_y(cr, a));
 		var a1 = a+60;
 		if(a1>360){a1 -= 360;}
 		if(a1==180){cr=30;}else{cr=20;}
-		ctx1.lineTo(polar_x(cr, a1), polar_y(cr, a1));
+		ctx[0].lineTo(polar_x(cr, a1), polar_y(cr, a1));
 		var a2 = a1+180;
 		if(a2 > 360){a2 -= 360;}
 		if(a2==180){cr=30;}else{cr=20;}
-		ctx1.lineTo(polar_x(cr, a2), polar_y(cr, a2));
-		ctx1.closePath();
-		ctx1.fill();
+		ctx[0].lineTo(polar_x(cr, a2), polar_y(cr, a2));
+		ctx[0].closePath();
+		ctx[0].fill();
 	}
 
-	ctx1.restore();
+	ctx[0].restore();
 
-	var image = ctx1.getImageData(0,0,canvas1.width,canvas1.height);
+	/*
 
-	ctx2.drawImage(canvas1, 0, 0);
+		END — DRAWING THE MARKER
 
+	*/
+
+	//The marker is copied to an image
+	var image = ctx[0].getImageData(0,0,canvas[0].width,canvas[0].height);
+
+	//The image is drawn onto the second canvas (this is a backup of our original marker which is going to copied to the final image in the end)
+	ctx[1].drawImage(canvas[0], 0, 0);
+
+	//The image of our marker is now turned in greyscale
+	//Attention if you want your shadow to be a greyscale version of your marker this is fine
+	//But in most cases you actually want a black version of your marker
+	//1. There are two solutions to this, draw a second version of your marker in black
+	//2. Write a new Filter that turns every colored pixel black
+	//It depends on the complexity of your marker, but in my cases drawing a second version was faster
 	var tImage = Filters.filterImage(Filters.grayscale, image);
+	//The following line is making the shadow transparent
 	tImage = Filters.filterImage(Filters.convolute, tImage,
 	  [ 1/19, 1/19, 1/19,
 	    1/19, 1/19, 1/19,
 	    1/19, 1/19, 1/19 ]
 	);
 
-	ctx1.putImageData(tImage, 0, 0);
+	//The greyscale image is drawn again onto the first canvas
+	ctx[0].putImageData(tImage, 0, 0);
 
-	ctx3.save();
-    ctx3.transform(1,0,-1.5,1,0,0);
-	ctx3.drawImage(canvas1, 138, 40, 100, 55);
-	ctx3.restore();
-	ctx3.drawImage(canvas2, 0, 0);
 
-	return canvas3.toDataURL("image/png");
-}
+	//The next four lines draw a distorted version of the marker shadow
+	ctx[2].save();
+    ctx[2].transform(1,0,-1.5,1,0,0);
+	ctx[2].drawImage(canvas[0], 138, 40, 100, 55);
+	ctx[2].restore();
 
-function polar_x(radius, angle) {
-	return(radius * Math.cos(Math.PI/180*angle + Math.PI/180*270));
-}
+	//finally we draw our marker on top
+	ctx[2].drawImage(canvas[1], 0, 0);
 
-function polar_y(radius, angle) {
-	return(radius * Math.sin(Math.PI/180*angle + Math.PI/180*270));
-}
-
-function polar_radius(x, y) {
-	return(Math.sqrt(Math.pow(x,2)+Math.pow(y,2)));
-}
-
-function polar_angle(x, y) {
-	return(Math.atan( y / x ));
+	//and send back the image file-string
+	return canvas[2].toDataURL("image/png");
 }
 
 function populate() {
+	//The data for this example is coming from data.js
+	//But you could of course use any kind of json data
 	for (var i = 0; i < 50 && markerCount < data.points.length; i++) {
-		url = trees[Math.round(Math.random()*(trees.length-1))];
-		var m = L.marker(L.latLng(data.points[markerCount].latitude, data.points[markerCount].longitude), {icon:L.divIcon({ html: '<div style="background-image:url('+url+');">&nbsp;</div>', className:'generativeMarker', iconSize: L.point(150, 110), iconAnchor: L.point(75, 100) })});
+		//Here we apply the individual markers
+		url = marker[Math.round(Math.random()*(marker.length-1))];
+		var m = L.marker(
+			L.latLng(
+				data.points[markerCount].latitude, 
+				data.points[markerCount].longitude
+			), {
+				icon:L.divIcon({ 
+					html: '<div style="background-image:url('+url+');">&nbsp;</div>', 
+					className:'generativeMarker', 
+					iconSize: L.point(150, 110), 
+					iconAnchor: L.point(75, 100) 
+				})
+			});
+
+		//And add the marker to the cluster
 		markers.addLayer(m);
 		markerCount++;
 	}
+
 	if(markerCount<data.points.length){
+		//Depending on the size of your dataset you should create subsets and don't add all at once
 		setTimeout("populate()", 1);
 	}else{
+		//Yay, we are done, lets remove that loading screen and start our cluster
 		document.getElementById("body").removeChild(document.getElementById("loading"));
 		map.addLayer(markers);
-		//setTooltip();
 	}
 }
 
-function setTooltip(){
-	$('.customMarkerIcon').tooltip({
-		position: {
-			my: "center top",
-			at: "center-25 bottom",
-			using: function( position, feedback ) {
-				$( this ).css( position );
-				$( "<div>" )
-					.addClass( "arrow" )
-					.addClass( feedback.vertical )
-					.addClass( feedback.horizontal )
-					.appendTo( this );
-			}
-		}
-	});
-}
-
-var markers, map, markerCount, trees, leafImg;
-
+var markers, map, markerCount, marker;
 $(document).ready(function() {
-	map = L.mapbox.map('map', 'juli84.gdc638hh').setView([52.5172578, 13.4045125], 9);
 
-	//map.on('zoomend', function(e){ setTooltip(); });
-	//map.on('moveend', function(e){ setTooltip(); });
+	//Initializing the Map
+	map = L.mapbox.map('map', 'YOURMAPBOX-ID-HERE').setView([52.5172578, 13.4045125], 9);
 
+	//Initialize the Marker Cluster Group
 	markers = L.markerClusterGroup({
 		maxClusterRadius: 100,
 		iconCreateFunction: function (cluster) {
-			//url
-			var url = createTree(cluster.getChildCount());
+			//Here we call the marker function, which returns an image-string
+			var url = drawMarker(cluster.getChildCount());
+			//The image string is then used as a background image for Div-Icon
 			return L.divIcon({ html: '<div class="customMarkerIcon" title="'+cluster.getChildCount()+'" style="background-image:url('+url+');">&nbsp;</div>', className:'generativeMarker', iconSize: L.point(150, 110) });
 		},
 		//Disable all of the defaults:
@@ -283,10 +185,20 @@ $(document).ready(function() {
 	});
 
 	markerCount = 0;
-	trees = [];
+	marker = [];
 
+	//If the marker is only customized by its cluster-data
+	//It is wise to prebuild a set of markers for the individual Markers
 	for(var i = 0; i<100; i++){
-		trees.push(createTree(1));
+		marker.push(drawMarker(1));
 	}
+
+	//Lets add some data to the cluster
 	populate();	
 });
+
+//Just some polar functions to convert x/y into radius/angle
+function polar_x(radius, angle) {return(radius * Math.cos(Math.PI/180*angle + Math.PI/180*270));}
+function polar_y(radius, angle) {return(radius * Math.sin(Math.PI/180*angle + Math.PI/180*270));}
+function polar_radius(x, y) {return(Math.sqrt(Math.pow(x,2)+Math.pow(y,2)));}
+function polar_angle(x, y) {return(Math.atan( y / x ));}
